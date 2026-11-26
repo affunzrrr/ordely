@@ -30,6 +30,7 @@
       crossorigin
     />
     <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./editorial.css" />
     <script type="module" src="./app.js"></script>
   </head>
   <body>
@@ -69,11 +70,11 @@
           <h1 id="hero-title"><span>The overseas</span> <span>edit.</span></h1>
           <div class="hero-art">
             <img
-              src="./assets/ordely-editorial.webp"
+              src="./assets/ordely-portrait-mono.webp"
               width="828"
               height="1050"
               fetchpriority="high"
-              alt="A model wears a blue denim jacket and gold hoops"
+              alt="Black-and-white portrait of a model in a denim jacket and hoop earrings"
             />
           </div>
           <div class="hero-copy">
@@ -91,15 +92,251 @@
               </button>
             </div>
           </div>
-          <a class="hero-feature" href="#edit/makeup">
+          <a class="hero-feature" href="#edit/bags">
             <img
-              src="./assets/rose-liquid-blush-color.webp"
+              src="./assets/canvas-crossbody-color.webp"
               width="512"
               height="512"
               alt=""
             />
-            <span>Shop makeup <span data-icon="up-right"></span></span>
+            <span>Shop bags <span data-icon="up-right"></span></span>
           </a>
+        </section>
+        <section
+          class="editorial-section wrap discovery"
+          id="discover"
+          aria-labelledby="discovery-title"
+        >
+          <div class="discovery-copy">
+            <h2 class="editorial-heading" id="discovery-title">
+              Fashion<br /><strong>from abroad.</strong>
+            </h2>
+            <p>
+              Browse the edit or bring us a product you found elsewhere. Ordely
+              orders on your behalf, handles customs, and delivers to your
+              address in Sri Lanka.
+            </p>
+            <a class="text-button" href="#how"
+              >See how it works <span data-icon="up-right"></span
+            ></a>
+          </div>
+          <a class="editorial-image discovery-apparel" href="#edit/apparel">
+            <img
+              src="./assets/studio-tailoring.webp"
+              width="620"
+              height="620"
+              loading="lazy"
+              alt="Model in a tailored black jacket seated in a studio"
+            />
+            <span>Apparel edit <span data-icon="up-right"></span></span>
+          </a>
+          <a
+            class="editorial-image discovery-accessories"
+            href="#edit/accessories"
+          >
+            <img
+              src="./assets/studio-lounge.webp"
+              width="620"
+              height="620"
+              loading="lazy"
+              alt="Model wearing a dark blouse and jewellery in a lounge chair"
+            />
+            <span>Accessories edit <span data-icon="up-right"></span></span>
+          </a>
+        </section>
+        <section
+          class="editorial-section wrap departments"
+          id="departments"
+          aria-labelledby="departments-title"
+        >
+          <div class="department-gallery">
+            <a class="editorial-image" href="#edit/apparel"
+              ><img
+                src="./assets/denim-jacket-color.webp"
+                width="512"
+                height="512"
+                loading="lazy"
+                alt="" /><span>Apparel <span data-icon="up-right"></span></span
+            ></a>
+            <a class="editorial-image" href="#edit/footwear"
+              ><img
+                src="./assets/court-sneakers-color.webp"
+                width="512"
+                height="512"
+                loading="lazy"
+                alt="" /><span>Footwear <span data-icon="up-right"></span></span
+            ></a>
+            <a class="editorial-image" href="#edit/bags"
+              ><img
+                src="./assets/bag-color.webp"
+                width="621"
+                height="621"
+                loading="lazy"
+                alt="" /><span>Bags <span data-icon="up-right"></span></span
+            ></a>
+            <a class="editorial-image" href="#edit/accessories"
+              ><img
+                src="./assets/gold-hoops-color.webp"
+                width="512"
+                height="512"
+                loading="lazy"
+                alt="" /><span
+                >Accessories <span data-icon="up-right"></span></span
+            ></a>
+            <a class="editorial-image" href="#edit/makeup"
+              ><img
+                src="./assets/studio-beauty.webp"
+                width="620"
+                height="620"
+                loading="lazy"
+                alt="" /><span>Makeup <span data-icon="up-right"></span></span
+            ></a>
+          </div>
+          <div class="editorial-footer">
+            <h2 class="editorial-heading" id="departments-title">
+              Shop by <strong>department.</strong>
+            </h2>
+            <a class="text-button" href="#edit"
+              >Browse all pieces <span data-icon="arrow"></span
+            ></a>
+          </div>
+        </section>
+        <section
+          class="order-editorial"
+          id="estimate-guide"
+          aria-labelledby="estimate-guide-title"
+        >
+          <div class="wrap order-editorial-layout">
+            <div class="order-editorial-photo">
+              <img
+                src="./assets/studio-collar.webp"
+                width="620"
+                height="620"
+                loading="lazy"
+                alt="Black-and-white detail of a model adjusting a shirt collar"
+              />
+            </div>
+            <h2 id="estimate-guide-title">
+              <span>Find it.</span><span>Price it.</span><span>Order it.</span>
+            </h2>
+            <div class="order-editorial-copy">
+              <p>
+                Already know what you want? Enter the item and its listed price
+                to see an estimate that includes shipping, customs, and local
+                delivery.
+              </p>
+              <button class="button primary" data-action="estimate">
+                Get an estimate <span data-icon="up-right"></span>
+              </button>
+            </div>
+          </div>
+        </section>
+        <section
+          class="editorial-section wrap featured-brands"
+          id="featured-brands"
+          aria-labelledby="featured-brands-title"
+        >
+          <div class="featured-brands-copy">
+            <h2 class="editorial-heading" id="featured-brands-title">
+              The brand<br /><strong>directory.</strong>
+            </h2>
+            <a class="text-button" href="#brands"
+              >View all brands <span data-icon="arrow"></span
+            ></a>
+          </div>
+          <div class="brand-panels">
+            <div class="brand-panel">
+              <p class="eyebrow">Apparel</p>
+              <ul>
+                <li><a href="#brands/gap">Gap</a></li>
+                <li><a href="#brands/lululemon">lululemon</a></li>
+                <li><a href="#brands/cos">COS</a></li>
+              </ul>
+            </div>
+            <div class="brand-panel">
+              <p class="eyebrow">Bags &amp; footwear</p>
+              <ul>
+                <li><a href="#brands/calvin-klein">Calvin Klein</a></li>
+                <li><a href="#brands/zara">Zara</a></li>
+                <li><a href="#brands/new-balance">New Balance</a></li>
+              </ul>
+            </div>
+            <div class="brand-panel">
+              <p class="eyebrow">Makeup</p>
+              <ul>
+                <li><a href="#brands/clinique">Clinique</a></li>
+                <li><a href="#brands/huda-beauty">Huda Beauty</a></li>
+                <li><a href="#brands/sheglam">SHEGLAM</a></li>
+              </ul>
+            </div>
+          </div>
+        </section>
+        <section
+          class="lookbook"
+          id="lookbook"
+          aria-labelledby="lookbook-title"
+        >
+          <div class="wrap lookbook-layout">
+            <div class="editorial-footer">
+              <h2 class="editorial-heading" id="lookbook-title">
+                In the <strong>lookbook.</strong>
+              </h2>
+              <a class="text-button" href="#edit"
+                >Shop the current edit <span data-icon="arrow"></span
+              ></a>
+            </div>
+            <div class="lookbook-gallery">
+              <button
+                class="editorial-image lookbook-denim"
+                data-action="product"
+                data-id="denim-jacket"
+              >
+                <img
+                  src="./assets/denim-jacket-color.webp"
+                  width="512"
+                  height="512"
+                  loading="lazy"
+                  alt=""
+                /><span>Gap denim <span data-icon="up-right"></span></span>
+              </button>
+              <button
+                class="editorial-image lookbook-bag"
+                data-action="product"
+                data-id="brown-tote"
+              >
+                <img
+                  src="./assets/brown-tote-color.webp"
+                  width="512"
+                  height="512"
+                  loading="lazy"
+                  alt=""
+                /><span
+                  >Calvin Klein tote <span data-icon="up-right"></span
+                ></span>
+              </button>
+              <a class="editorial-image lookbook-beauty" href="#edit/makeup"
+                ><img
+                  src="./assets/studio-beauty.webp"
+                  width="620"
+                  height="620"
+                  loading="lazy"
+                  alt="" /><span>Makeup <span data-icon="up-right"></span></span
+              ></a>
+              <button
+                class="editorial-image lookbook-hoops"
+                data-action="product"
+                data-id="gold-hoops"
+              >
+                <img
+                  src="./assets/gold-hoops-color.webp"
+                  width="512"
+                  height="512"
+                  loading="lazy"
+                  alt=""
+                /><span>Zara hoops <span data-icon="up-right"></span></span>
+              </button>
+            </div>
+          </div>
         </section>
         <section class="edit wrap" id="edit" aria-labelledby="edit-title">
           <div class="section-head">

@@ -99,7 +99,8 @@ function render() {
   for (const link of document.querySelectorAll(".main-nav a, .strip-unlock")) {
     if (
       link.hash === location.hash ||
-      (route === "collective-unlock" && link.hash === "#collective-unlock")
+      (["brands", "collective-unlock"].includes(route) &&
+        link.hash === `#${route}`)
     )
       link.setAttribute("aria-current", "location");
     else link.removeAttribute("aria-current");
@@ -110,13 +111,16 @@ function render() {
   home.hidden = subpage;
   page.hidden = !subpage;
   if (route === "orders") page.innerHTML = ordersView(state);
-  else if (route === "brands")
+  else if (route === "brands") {
+    const linkedBrand = state.brands.find(
+      ({ name }) => name.toLowerCase().replaceAll(" ", "-") === section,
+    );
     page.innerHTML = brandsView(
       state,
-      brandFilters.query,
-      brandFilters.category,
+      linkedBrand?.name ?? brandFilters.query,
+      linkedBrand ? "" : brandFilters.category,
     );
-  else if (route === "admin")
+  } else if (route === "admin")
     page.innerHTML = adminView(state, section || "overview", orderFilters);
   else if (route === "collective-unlock") {
     const filter = groupFilters.some(([key]) => key === section)
@@ -724,9 +728,8 @@ modal.addEventListener("click", (event) => {
 });
 function scrollToRoute() {
   const route = location.hash.slice(1).split("/")[0];
-  const anchor =
-    ["edit", "how", "main"].includes(route) && document.getElementById(route);
-  if (anchor && !home.hidden) anchor.scrollIntoView();
+  const anchor = route !== "home" && document.getElementById(route);
+  if (anchor && (route === "main" || !home.hidden)) anchor.scrollIntoView();
   else window.scrollTo(0, 0);
 }
 window.addEventListener("hashchange", () => {
