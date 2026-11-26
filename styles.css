@@ -142,7 +142,9 @@ textarea:focus-visible {
   gap: 20px;
 }
 .wordmark {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
   width: max-content;
   font-size: 37px;
   font-weight: 700;
@@ -150,8 +152,10 @@ textarea:focus-visible {
   letter-spacing: -0.095em;
   padding-right: 0.06em;
 }
-.wordmark span {
-  margin-left: 1px;
+.wordmark-mark {
+  width: 30px;
+  height: 30px;
+  flex: none;
 }
 .main-nav,
 .nav-actions {
@@ -1259,5 +1263,16 @@ td a,
   }
   .nav-actions {
     gap: 2px;
+  }
+  .nav-actions .icon-button {
+    padding: 5px;
+  }
+  .wordmark {
+    gap: 6px;
+    font-size: 30px;
+  }
+  .wordmark-mark {
+    width: 25px;
+    height: 25px;
   }
 }
