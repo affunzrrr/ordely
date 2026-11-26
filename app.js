@@ -3,6 +3,7 @@ import {
   canOrder,
   categories,
   changeOrder,
+  checkoutQuote,
   classification,
   currentBatch,
   esc,
@@ -10,17 +11,14 @@ import {
   finalTotal,
   identifier,
   isApproved,
-  lineItems,
   load,
   members,
-  midpoint,
   money,
   notify,
   person,
   safeURL,
   save,
   shortDate,
-  total,
 } from "./data.js";
 import { adminDialog, adminView, manifest, submitAdmin } from "./admin.js";
 import {
@@ -30,7 +28,8 @@ import {
   brandsView,
   cancelView,
   catalogueView,
-  checkoutView,
+  checkoutPaymentView,
+  checkoutReviewView,
   estimateForm,
   helpView,
   ordersView,
@@ -43,11 +42,11 @@ import {
 import { button, icon, iconButton, notice } from "./ui.js";
 
 let state = load();
-let category = "All pieces";
 let sort = "featured";
 let brandFilters = {};
 let orderFilters = {};
 let pending = null;
+let checkoutDraft = null;
 let estimateTimer = null;
 let toastTimer;
 const modal = document.querySelector("#dialog");
@@ -76,7 +75,6 @@ function render() {
     user && (state.alerts[user.id] || []).some((entry) => !entry.read);
   document.querySelector("#batch-strip").innerHTML =
     `${icon("calendar")}<span>Next batch closes ${shortDate(batch.closes)}, 6 pm LKT</span><b>·</b><span>${batch.days} ${batch.days === 1 ? "day" : "days"} left</span>`;
-  document.querySelector("#hero-batch").textContent = `BATCH ${batch.id}`;
   document.querySelector("#nav-actions").innerHTML =
     iconButton("Search approved brands", "search", "search") +
     iconButton("Account", "user", "account") +
@@ -90,6 +88,16 @@ function render() {
     `<a href="#orders" class="icon-button" aria-label="My orders" title="My orders">${icon("bag")}</a>` +
     iconButton("Menu", "menu", "menu", "mobile-menu");
   const [route, section] = (location.hash.slice(1) || "home").split("/");
+  const category =
+    route === "edit"
+      ? categories.find((name) => name.toLowerCase() === section) ||
+        "All pieces"
+      : "All pieces";
+  for (const link of document.querySelectorAll(".main-nav a")) {
+    if (link.hash === location.hash)
+      link.setAttribute("aria-current", "location");
+    else link.removeAttribute("aria-current");
+  }
   const subpage = ["orders", "brands", "admin"].includes(route);
   home.hidden = subpage;
   page.hidden = !subpage;
@@ -116,6 +124,7 @@ function openDialog(title, body, kicker = "", wide = false) {
 
 function closeDialog() {
   clearTimeout(estimateTimer);
+  checkoutDraft = null;
   if (modal.open) modal.close();
 }
 
@@ -237,7 +246,11 @@ function runAction(action, id = "") {
       openDialog("Help and terms", helpView());
       break;
     case "filter":
-      category = id;
+      history.replaceState(
+        null,
+        "",
+        id === "All pieces" ? "#edit" : `#edit/${id.toLowerCase()}`,
+      );
       render();
       catalogue
         .querySelector('[aria-pressed="true"]')
@@ -299,8 +312,17 @@ function runAction(action, id = "") {
         actionError("Pre-orders are currently closed for this piece.");
         break;
       }
-      if (requireProfile(action, id))
-        openDialog("Pre-order", checkoutView(state, item), item.brand);
+      if (requireProfile(action, id)) {
+        const draft =
+          checkoutDraft?.itemId === id && checkoutDraft.buyer === state.active
+            ? checkoutDraft
+            : { variant: item.variant, address: person(state).address };
+        openDialog(
+          "Review your pre-order",
+          checkoutReviewView(item, checkoutQuote(state, item), draft),
+          item.brand,
+        );
+      }
       break;
     case "order":
       if (order)
@@ -427,6 +449,28 @@ function createEstimate(data) {
   }, 1300);
 }
 
+function confirmCheckout(id, data) {
+  const user = person(state);
+  const item = state.products.find((entry) => entry.id === id);
+  if (!user || !item || !canOrder(state, item))
+    throw Error("This piece can no longer be pre-ordered.");
+  if (data.address.length < 8 || !data.variant)
+    throw Error("Enter your delivery address and size or colour.");
+  const quote = checkoutQuote(state, item);
+  checkoutDraft = {
+    itemId: id,
+    buyer: user.id,
+    address: data.address,
+    variant: data.variant,
+    quote,
+  };
+  openDialog(
+    "Place your pre-order",
+    checkoutPaymentView(item, quote, checkoutDraft),
+    "Details confirmed",
+  );
+}
+
 function payments(action, id, data) {
   const user = person(state);
   if (!user) throw Error("Open your profile to continue.");
@@ -434,33 +478,45 @@ function payments(action, id, data) {
     const item = state.products.find((entry) => entry.id === id);
     if (!item || !canOrder(state, item))
       throw Error("This piece can no longer be pre-ordered.");
+    const draft = checkoutDraft;
+    if (!draft || draft.itemId !== id || draft.buyer !== user.id)
+      throw Error("Review and confirm your details before paying the deposit.");
+    const quote = checkoutQuote(state, item);
+    if (
+      quote.batch.id !== draft.quote.batch.id ||
+      quote.estimate.some(
+        (amount, index) => amount !== draft.quote.estimate[index],
+      )
+    ) {
+      runAction("checkout", id);
+      actionError(
+        "The batch or estimate changed. Review your details again before paying.",
+      );
+      return;
+    }
     if (data.result === "Failure")
       throw Error(
         "The test payment was declined. Choose Success to try again.",
       );
-    if (!data.agent || !data.terms || data.address.length < 8 || !data.variant)
-      throw Error(
-        "Confirm your address, variant, prototype terms and agent appointment.",
-      );
-    const batch = currentBatch(state);
-    const lines = lineItems(item, state, members(state, item));
-    const estimate = total(lines);
+    if (!data.agent || !data.terms)
+      throw Error("Accept the prototype terms and agent appointment.");
     const order = {
       id: identifier("ORD"),
       buyer: user.id,
-      item: { ...item, variant: data.variant },
-      estimate,
-      lines,
-      deposit: Math.ceil(midpoint(estimate) / 2),
-      batch: batch.id,
-      closes: batch.closes,
+      item: { ...item, variant: draft.variant },
+      estimate: quote.estimate,
+      lines: quote.lines,
+      deposit: quote.deposit,
+      batch: quote.batch.id,
+      closes: quote.batch.closes,
       status: "Deposit received",
       history: [{ label: "Deposit received", at: Date.now() }],
-      address: data.address,
+      address: draft.address,
       payment: "Deposit paid (sandbox)",
       actual: null,
     };
     state.orders.push(order);
+    checkoutDraft = null;
     notify(state, user.id, `${order.id} · Deposit received in test mode.`);
     persist();
     runAction("order", order.id);
@@ -544,6 +600,7 @@ function submitForm(action, id, data) {
       ) + button("Back to account", "account"),
     );
   } else if (action === "estimate") createEstimate(data);
+  else if (action === "review-checkout") confirmCheckout(id, data);
   else if (["checkout", "balance", "cancel"].includes(action))
     payments(action, id, data);
   else if (action === "admin-filter") {
@@ -567,6 +624,8 @@ document.addEventListener("click", (event) => {
     pending = null;
     closeDialog();
   }
+  if (link?.hash === location.hash && link.hash.startsWith("#edit/"))
+    scrollToRoute();
   const target = event.target.closest("[data-action]");
   if (!target) return;
   state = load();
@@ -595,6 +654,7 @@ document.addEventListener("submit", (event) => {
 modal.addEventListener("cancel", () => {
   clearTimeout(estimateTimer);
   pending = null;
+  checkoutDraft = null;
 });
 modal.addEventListener("click", (event) => {
   if (event.target !== modal) return;
@@ -609,11 +669,17 @@ modal.addEventListener("click", (event) => {
     closeDialog();
   }
 });
-window.addEventListener("hashchange", () => {
-  render();
-  const anchor = document.getElementById(location.hash.slice(1));
+function scrollToRoute() {
+  const route = location.hash.slice(1).split("/")[0];
+  const anchor =
+    ["edit", "how", "collective-unlock", "main"].includes(route) &&
+    document.getElementById(route);
   if (anchor && !home.hidden) anchor.scrollIntoView();
   else window.scrollTo(0, 0);
+}
+window.addEventListener("hashchange", () => {
+  render();
+  scrollToRoute();
 });
 window.addEventListener("storage", () => {
   state = load();
@@ -623,6 +689,4 @@ document.querySelectorAll("[data-icon]").forEach((node) => {
   node.innerHTML = icon(node.dataset.icon);
 });
 render();
-const initialAnchor = document.getElementById(location.hash.slice(1));
-if (initialAnchor && !home.hidden)
-  requestAnimationFrame(() => initialAnchor.scrollIntoView());
+if (location.hash) requestAnimationFrame(scrollToRoute);

@@ -7,12 +7,12 @@
       name="description"
       content="Shop overseas fashion together and see the estimated cost in Sri Lankan rupees before you order."
     />
-    <meta name="theme-color" content="#f8f7f4" />
+    <meta name="theme-color" content="#ffffff" />
     <title>Ordely — Overseas fashion, ordered together</title>
     <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml" />
     <link
       rel="preload"
-      href="./assets/instrument-serif.woff2"
+      href="./assets/dm-sans.woff2"
       as="font"
       type="font/woff2"
       crossorigin
@@ -30,45 +30,55 @@
         <a class="wordmark" href="#home" aria-label="Ordely home"
           >ordely<span>.</span></a
         >
-        <nav class="main-nav" aria-label="Main navigation">
-          <a href="#edit">The Edit</a><a href="#brands">Brands</a
-          ><a href="#how">How it works</a>
+        <nav class="main-nav" aria-label="Shop by department">
+          <a href="#edit/apparel">Apparel</a>
+          <a href="#edit/footwear">Footwear</a>
+          <a href="#edit/bags">Bags</a>
+          <a href="#edit/accessories">Accessories</a>
+          <a class="nav-resource" href="#brands">Brands</a>
+          <a class="nav-resource" href="#how">How it works</a>
         </nav>
         <div class="nav-actions" id="nav-actions"></div>
       </div>
     </header>
     <main id="main">
       <div id="home-view">
-        <section class="hero wrap" id="home" aria-labelledby="hero-title">
-          <div class="hero-copy">
-            <p class="eyebrow hero-kicker">
-              <span></span> Overseas fashion, shared shipping
-            </p>
-            <h1 id="hero-title">Good finds.<br /><em>Better together.</em></h1>
-            <p>
-              Shop the pieces you love from overseas. Order in a group, share
-              the shipping, and see what it’ll cost in rupees before you commit.
-            </p>
-            <div class="hero-actions">
-              <a class="button primary" href="#edit"
-                >Explore the edit <span data-icon="arrow"></span></a
-              ><button class="text-button" data-action="estimate">
-                Get an estimate <span data-icon="up-right"></span>
-              </button>
+        <section class="hero" id="home" aria-labelledby="hero-title">
+          <picture class="hero-art">
+            <source
+              media="(max-width: 700px)"
+              srcset="./assets/ordely-campaign-mobile.webp"
+            />
+            <img
+              src="./assets/ordely-campaign.webp"
+              width="1536"
+              height="1024"
+              fetchpriority="high"
+              alt="Two models in blue stripes, burgundy and denim against a terracotta wall"
+            />
+          </picture>
+          <div class="hero-inner wrap">
+            <div class="hero-copy">
+              <p class="eyebrow hero-kicker">
+                Overseas fashion, shared shipping
+              </p>
+              <h1 id="hero-title">
+                Good finds.<br /><em>Better together.</em>
+              </h1>
+              <p>
+                Find a piece you love, see the full estimate in rupees, and
+                split the shipping with your group.
+              </p>
+              <div class="hero-actions">
+                <a class="button" href="#edit"
+                  >Shop the edit <span data-icon="arrow"></span
+                ></a>
+                <button class="button" data-action="estimate">
+                  Get an estimate <span data-icon="up-right"></span>
+                </button>
+              </div>
             </div>
           </div>
-          <figure class="hero-art">
-            <img
-              src="./assets/editorial.webp"
-              width="1450"
-              height="967"
-              fetchpriority="high"
-              alt="Woman in an oversized black blazer against concrete walls"
-            />
-            <figcaption>
-              <span>THE ORDELY EDIT</span><span id="hero-batch"></span>
-            </figcaption>
-          </figure>
         </section>
         <section class="edit wrap" id="edit" aria-labelledby="edit-title">
           <div class="section-head">
@@ -76,11 +86,49 @@
               <p class="eyebrow">Collective unlock</p>
               <h2 id="edit-title">The current edit<span>.</span></h2>
             </div>
-            <p id="edit-note">
-              Join for free. When a group fills, pre-orders open.
-            </p>
+            <a class="text-button" href="#collective-unlock"
+              >How groups unlock <span data-icon="up-right"></span
+            ></a>
           </div>
           <div id="catalogue"></div>
+        </section>
+        <section
+          class="unlock"
+          id="collective-unlock"
+          aria-labelledby="unlock-title"
+        >
+          <div class="wrap unlock-layout">
+            <div>
+              <h2 id="unlock-title">Collective Unlock</h2>
+              <p>
+                Join other shoppers interested in the same piece. Once the group
+                reaches its target, it can join the next bulk-order batch.
+              </p>
+            </div>
+            <ul>
+              <li>
+                <strong>Join for free</strong
+                ><span
+                  >Show interest to help us see which products people want to
+                  order together.</span
+                >
+              </li>
+              <li>
+                <strong>Share the shipping</strong
+                ><span
+                  >Combining orders into one shipment can reduce what each
+                  shopper pays for freight.</span
+                >
+              </li>
+              <li>
+                <strong>Confirm your details first</strong
+                ><span
+                  >Check your item, delivery address and price estimate before
+                  deciding whether to pay the deposit.</span
+                >
+              </li>
+            </ul>
+          </div>
         </section>
         <section class="process" id="how">
           <div class="wrap process-layout">
@@ -93,7 +141,6 @@
             </div>
             <ol>
               <li>
-                <span>01</span>
                 <div>
                   <h3>Bring us a find</h3>
                   <p>
@@ -104,17 +151,15 @@
                 </div>
               </li>
               <li>
-                <span>02</span>
                 <div>
                   <h3>Order together</h3>
                   <p>
-                    Join a group for free. Once it unlocks, secure your spot
-                    with a 50% deposit before the batch closes.
+                    Once your group unlocks, confirm your details. A 50% deposit
+                    secures your spot before the batch closes.
                   </p>
                 </div>
               </li>
               <li>
-                <span>03</span>
                 <div>
                   <h3>Settle after customs</h3>
                   <p>

@@ -66,7 +66,7 @@ const products = [
     currency: "GBP",
     price: 39,
     material: "Cotton poplin",
-    variant: "S / White stripe",
+    variant: "S / Blue and white stripe",
     interested: 4,
     threshold: 5,
     popularity: "Filling fast",
@@ -248,6 +248,16 @@ export function total(lines) {
   return lines.reduce(([lo, hi], [a, b]) => [lo + a, hi + b], [0, 0]);
 }
 export const midpoint = ([lo, hi]) => (lo + hi) / 2;
+export function checkoutQuote(state, item) {
+  const lines = lineItems(item, state, members(state, item));
+  const estimate = total(lines);
+  return {
+    lines,
+    estimate,
+    deposit: Math.ceil(midpoint(estimate) / 2),
+    batch: currentBatch(state),
+  };
+}
 export const members = (state, item) =>
   item.interested + (state.interest[item.id] || []).length;
 export const isApproved = (state, item) =>

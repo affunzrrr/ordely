@@ -12,7 +12,6 @@ import {
   isApproved,
   lineItems,
   members,
-  midpoint,
   money,
   names,
   person,
@@ -286,17 +285,25 @@ export function alertsView(state) {
   return `${notice(user.emailOptIn ? "In-app notifications · Simulated email is enabled." : "In-app notifications · Simulated email is disabled.")}${alerts.length ? `<ol class="timeline">${alerts.map((entry) => `<li>${esc(entry.message)}<time>${date(entry.at)}</time></li>`).join("")}</ol>` : empty("You’re all caught up", "Updates appear here as your groups and orders progress.")}`;
 }
 
-export function checkoutView(state, item) {
-  const user = person(state);
-  const estimate = reducedPrice(state, item);
-  const deposit = Math.ceil(midpoint(estimate) / 2);
-  const current = currentBatch(state);
+export function checkoutReviewView(item, quote, details) {
+  return `${notice("Confirming your details is free. You can leave before paying the deposit.")}${rows(
+    [
+      ["Product", esc(item.title)],
+      ["Estimated total", range(quote.estimate)],
+      ["Deposit if you proceed", money(quote.deposit)],
+      ["Order batch", `${quote.batch.id} · ${shortDate(quote.batch.closes)}`],
+    ],
+  )}${disclaimer()}${form("review-checkout", field("Size or colour", "variant", `required maxlength="60" value="${esc(details.variant)}"`, true) + area("Delivery address", "address", details.address, 'required maxlength="220" minlength="8"') + submit("Confirm details"), item.id)}`;
+}
+
+export function checkoutPaymentView(item, quote, details) {
   return `${notice(testNotice, "test")}${rows([
     ["Product", esc(item.title)],
-    ["Estimated total", range(estimate)],
-    ["Deposit · 50% of the estimate midpoint", money(deposit), true],
-    ["Order batch", `${current.id} · ${shortDate(current.closes)}`],
-  ])}${disclaimer()}${form("checkout", field("Size or colour", "variant", `required maxlength="60" value="${esc(item.variant)}"`, true) + area("Delivery address", "address", user.address, 'required maxlength="220" minlength="8"') + check("I accept the prototype terms and cancellation window.", "terms", false, true) + check("I appoint Ordely as my purchasing agent for this sandbox order.", "agent", false, true) + select("Simulate payment result", "result", ["Success", "Failure"], "Success", true) + submit(`Pay ${money(deposit)} in test mode`), item.id)}`;
+    ["Size or colour", esc(details.variant)],
+    ["Delivery address", esc(details.address)],
+    ["Estimated total", range(quote.estimate)],
+    ["Deposit · 50% of the estimate midpoint", money(quote.deposit), true],
+  ])}${disclaimer()}${form("checkout", check("I accept the prototype terms and cancellation window.", "terms", false, true) + check("I appoint Ordely as my purchasing agent for this sandbox order.", "agent", false, true) + select("Simulate payment result", "result", ["Success", "Failure"], "Success", true) + submit(`Pay ${money(quote.deposit)} in test mode`), item.id)}${button("Edit confirmed details", "checkout", item.id, "text-button")}`;
 }
 
 export function orderView(state, order) {
