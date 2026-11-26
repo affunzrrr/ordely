@@ -1,5 +1,6 @@
 import {
   cancellable,
+  canGroupOrder,
   canOrder,
   categories,
   changeOrder,
@@ -31,6 +32,8 @@ import {
   checkoutPaymentView,
   checkoutReviewView,
   estimateForm,
+  groupFilters,
+  groupsView,
   helpView,
   ordersView,
   orderView,
@@ -74,7 +77,7 @@ function render() {
   const unread =
     user && (state.alerts[user.id] || []).some((entry) => !entry.read);
   document.querySelector("#batch-strip").innerHTML =
-    `${icon("calendar")}<span>Next batch closes ${shortDate(batch.closes)}, 6 pm LKT</span><b>·</b><span>${batch.days} ${batch.days === 1 ? "day" : "days"} left</span>`;
+    `<div class="batch-copy">${icon("calendar")}<span>Batch closes ${shortDate(batch.closes)}<span class="batch-time">, 6 pm LKT</span></span><b class="batch-time">·</b><span class="batch-time">${batch.days} ${batch.days === 1 ? "day" : "days"} left</span></div><a class="strip-unlock" href="#collective-unlock">Collective Unlock ${icon("up-right")}</a>`;
   document.querySelector("#nav-actions").innerHTML =
     iconButton("Search approved brands", "search", "search") +
     iconButton("Account", "user", "account") +
@@ -93,12 +96,17 @@ function render() {
       ? categories.find((name) => name.toLowerCase() === section) ||
         "All pieces"
       : "All pieces";
-  for (const link of document.querySelectorAll(".main-nav a")) {
-    if (link.hash === location.hash)
+  for (const link of document.querySelectorAll(".main-nav a, .strip-unlock")) {
+    if (
+      link.hash === location.hash ||
+      (route === "collective-unlock" && link.hash === "#collective-unlock")
+    )
       link.setAttribute("aria-current", "location");
     else link.removeAttribute("aria-current");
   }
-  const subpage = ["orders", "brands", "admin"].includes(route);
+  const subpage = ["orders", "brands", "admin", "collective-unlock"].includes(
+    route,
+  );
   home.hidden = subpage;
   page.hidden = !subpage;
   if (route === "orders") page.innerHTML = ordersView(state);
@@ -110,7 +118,12 @@ function render() {
     );
   else if (route === "admin")
     page.innerHTML = adminView(state, section || "overview", orderFilters);
-  else catalogue.innerHTML = catalogueView(state, category, sort);
+  else if (route === "collective-unlock") {
+    const filter = groupFilters.some(([key]) => key === section)
+      ? section
+      : "all";
+    page.innerHTML = groupsView(state, filter);
+  } else catalogue.innerHTML = catalogueView(state, category, sort);
 }
 
 function openDialog(title, body, kicker = "", wide = false) {
@@ -180,14 +193,21 @@ function toggleInterest(item) {
   state.interest[item.id] = remove
     ? prior.filter((id) => id !== user.id)
     : [...prior, user.id];
-  if (!item.unlocked && members(state, item) >= item.threshold) {
+  const justUnlocked = !item.unlocked && members(state, item) >= item.threshold;
+  if (justUnlocked) {
     item.unlocked = true;
     for (const id of state.interest[item.id])
       notify(state, id, `${item.title} unlocked. Pre-orders are open.`);
   }
   persist();
   runAction("product", item.id);
-  message(remove ? "Interest removed." : "Interest recorded.");
+  message(
+    remove
+      ? "You left the group."
+      : justUnlocked
+        ? "Group unlocked. Group pre-orders are open."
+        : "You joined the group for free.",
+  );
 }
 
 function runAction(action, id = "") {
@@ -203,7 +223,7 @@ function runAction(action, id = "") {
     case "menu":
       openDialog(
         "Menu",
-        '<div class="actions"><a class="button" href="#edit">The Edit</a><a class="button" href="#brands">Brands</a><a class="button" href="#how">How it works</a><a class="button" href="#orders">My orders</a></div>',
+        '<div class="actions"><a class="button" href="#edit">The Edit</a><a class="button" href="#brands">Brands</a><a class="button" href="#collective-unlock">Collective Unlock</a><a class="button" href="#how">How it works</a><a class="button" href="#orders">My orders</a></div>',
       );
       break;
     case "search":
@@ -262,7 +282,6 @@ function runAction(action, id = "") {
         `<div class="actions">${[
           ["featured", "Featured"],
           ["price", "Lowest estimate"],
-          ["progress", "Closest to unlock"],
         ]
           .map(([key, label]) =>
             button(
@@ -274,6 +293,17 @@ function runAction(action, id = "") {
           )
           .join("")}</div>`,
       );
+      break;
+    case "group-filter":
+      history.replaceState(
+        null,
+        "",
+        id === "all" ? "#collective-unlock" : `#collective-unlock/${id}`,
+      );
+      render();
+      page
+        .querySelector('[aria-pressed="true"]')
+        ?.focus({ preventScroll: true });
       break;
     case "sort-set":
       sort = id;
@@ -308,22 +338,36 @@ function runAction(action, id = "") {
       if (requireProfile(action, id)) toggleInterest(item);
       break;
     case "checkout":
+    case "group-checkout": {
       if (!item || !canOrder(state, item)) {
         actionError("Pre-orders are currently closed for this piece.");
         break;
       }
       if (requireProfile(action, id)) {
+        const mode = action === "group-checkout" ? "group" : "individual";
+        if (mode === "group" && !canGroupOrder(state, item)) {
+          actionError("Join the unlocked group to place a group pre-order.");
+          break;
+        }
         const draft =
-          checkoutDraft?.itemId === id && checkoutDraft.buyer === state.active
+          checkoutDraft?.itemId === id &&
+          checkoutDraft.buyer === state.active &&
+          checkoutDraft.mode === mode
             ? checkoutDraft
             : { variant: item.variant, address: person(state).address };
         openDialog(
           "Review your pre-order",
-          checkoutReviewView(item, checkoutQuote(state, item), draft),
+          checkoutReviewView(
+            item,
+            checkoutQuote(state, item, mode),
+            draft,
+            mode,
+          ),
           item.brand,
         );
       }
       break;
+    }
     case "order":
       if (order)
         openDialog(order.item.title, orderView(state, order), order.id);
@@ -455,13 +499,17 @@ function confirmCheckout(id, data) {
   if (!user || !item || !canOrder(state, item))
     throw Error("This piece can no longer be pre-ordered.");
   if (data.address.length < 8 || !data.variant)
-    throw Error("Enter your delivery address and size or colour.");
-  const quote = checkoutQuote(state, item);
+    throw Error("Enter your delivery address and chosen variant.");
+  const mode = data.mode === "group" ? "group" : "individual";
+  if (mode === "group" && !canGroupOrder(state, item))
+    throw Error("Join the unlocked group to place a group pre-order.");
+  const quote = checkoutQuote(state, item, mode);
   checkoutDraft = {
     itemId: id,
     buyer: user.id,
     address: data.address,
     variant: data.variant,
+    mode,
     quote,
   };
   openDialog(
@@ -481,14 +529,18 @@ function payments(action, id, data) {
     const draft = checkoutDraft;
     if (!draft || draft.itemId !== id || draft.buyer !== user.id)
       throw Error("Review and confirm your details before paying the deposit.");
-    const quote = checkoutQuote(state, item);
+    if (draft.mode === "group" && !canGroupOrder(state, item))
+      throw Error(
+        "This group pre-order is no longer available. You can still pre-order individually.",
+      );
+    const quote = checkoutQuote(state, item, draft.mode);
     if (
       quote.batch.id !== draft.quote.batch.id ||
       quote.estimate.some(
         (amount, index) => amount !== draft.quote.estimate[index],
       )
     ) {
-      runAction("checkout", id);
+      runAction(draft.mode === "group" ? "group-checkout" : "checkout", id);
       actionError(
         "The batch or estimate changed. Review your details again before paying.",
       );
@@ -507,6 +559,7 @@ function payments(action, id, data) {
       estimate: quote.estimate,
       lines: quote.lines,
       deposit: quote.deposit,
+      mode: draft.mode,
       batch: quote.batch.id,
       closes: quote.batch.closes,
       status: "Deposit received",
@@ -672,8 +725,7 @@ modal.addEventListener("click", (event) => {
 function scrollToRoute() {
   const route = location.hash.slice(1).split("/")[0];
   const anchor =
-    ["edit", "how", "collective-unlock", "main"].includes(route) &&
-    document.getElementById(route);
+    ["edit", "how", "main"].includes(route) && document.getElementById(route);
   if (anchor && !home.hidden) anchor.scrollIntoView();
   else window.scrollTo(0, 0);
 }

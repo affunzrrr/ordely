@@ -1,6 +1,7 @@
 import {
   activeVersion,
   cancellable,
+  canGroupOrder,
   categories,
   currentBatch,
   date,
@@ -10,6 +11,7 @@ import {
   finalTotal,
   hs,
   isApproved,
+  joinedGroup,
   lineItems,
   members,
   money,
@@ -48,8 +50,9 @@ export const visibleItems = (state) =>
       item.review !== "Rejected" &&
       (item.confidence !== "Low" || item.owner === state.active),
   );
-export const reducedPrice = (state, item) =>
+const reducedPrice = (state, item) =>
   total(lineItems(item, state, members(state, item)));
+const individualPrice = (state, item) => total(lineItems(item, state));
 
 const meter = (state, item) =>
   `<div class="progress" role="progressbar" aria-label="Group progress" aria-valuemin="0" aria-valuemax="${item.threshold}" aria-valuenow="${Math.min(item.threshold, members(state, item))}"><span style="width:${item.unlocked ? 100 : Math.min(100, (members(state, item) * 100) / item.threshold)}%"></span></div>`;
@@ -60,12 +63,7 @@ export function catalogueView(state, filter, sort) {
   );
   if (sort === "price")
     entries.sort(
-      (a, b) => reducedPrice(state, a)[0] - reducedPrice(state, b)[0],
-    );
-  if (sort === "progress")
-    entries.sort(
-      (a, b) =>
-        members(state, b) / b.threshold - members(state, a) / a.threshold,
+      (a, b) => individualPrice(state, a)[0] - individualPrice(state, b)[0],
     );
   const tabs = ["All pieces", ...categories]
     .map((label) =>
@@ -78,24 +76,141 @@ export function catalogueView(state, filter, sort) {
       ),
     )
     .join("");
-  const products = entries
-    .map(
-      (item) =>
-        `<article class="product">${button(`${art(item)}${tag(item.confidence === "Low" ? "In review" : ranked(item), item.unlocked)}`, "product", item.id, "product-cover", `aria-label="View ${esc(item.title)}"`)}<div class="product-meta"><p class="eyebrow">${esc(item.brand)}</p><h3>${button(esc(item.title), "product", item.id, "")}</h3><p class="price">${range(reducedPrice(state, item))}</p>${meter(state, item)}<p class="group-meta"><span>${members(state, item)} of ${item.threshold} interested</span><span>${item.unlocked ? "Pre-order open" : `${currentBatch(state).days}d left`}</span></p></div></article>`,
+  return `<div class="catalogue-bar"><div class="filters" aria-label="Filter the edit">${tabs}</div><div class="count"><span aria-live="polite">${entries.length} ${entries.length === 1 ? "piece" : "pieces"}</span>${button(icon("sliders"), "sort", "", "icon-button", 'aria-label="Sort the edit" title="Sort the edit"')}</div></div>${entries.length ? `<div class="product-grid">${entries.map((item) => catalogueCard(state, item)).join("")}</div><p class="catalogue-disclaimer disclaimer">Illustrative product photos. ${estimateNotice}</p>` : empty("No pieces in this category", "Choose another category or request an estimate.", button("Get an estimate", "estimate", "", "button primary"))}`;
+}
+
+function productCard(item, price, content, badge = "") {
+  const cover = button(
+    `${art(item)}${badge}`,
+    "product",
+    item.id,
+    "product-cover",
+    `aria-label="View ${esc(item.title)}"`,
+  );
+  return `<article class="product">${cover}<div class="product-meta"><p class="eyebrow">${esc(item.brand)}</p><h3>${button(esc(item.title), "product", item.id, "")}</h3><p class="price">${range(price)}</p>${content}</div></article>`;
+}
+
+function catalogueCard(state, item) {
+  const action = canOrder(state, item)
+    ? button(
+        "Pre-order",
+        "checkout",
+        item.id,
+        "text-button product-action",
+        `aria-label="Pre-order ${esc(item.title)}"`,
+      )
+    : button(
+        "View estimate review",
+        "product",
+        item.id,
+        "text-button product-action",
+      );
+  return productCard(item, individualPrice(state, item), action);
+}
+
+export const groupFilters = [
+  ["all", "All groups"],
+  ["close", "Nearly unlocked"],
+  ["open", "Unlocked"],
+  ["mine", "My groups"],
+];
+
+function groupProgress(state, item) {
+  const remaining = Math.max(0, item.threshold - members(state, item));
+  return `${meter(state, item)}<p class="group-meta"><span>${members(state, item)} of ${item.threshold} interested</span><span>${item.unlocked ? "Group unlocked" : `${remaining} more needed`}</span></p>`;
+}
+
+function groupCard(state, item) {
+  let action = button(
+    "Join group free",
+    "interest",
+    item.id,
+    "button small",
+    `aria-label="Join group for ${esc(item.title)}"`,
+  );
+  if (joinedGroup(state, item)) {
+    action = canGroupOrder(state, item)
+      ? button(
+          "Group pre-order",
+          "group-checkout",
+          item.id,
+          "button primary small",
+          `aria-label="Group pre-order for ${esc(item.title)}"`,
+        )
+      : button("View your group", "product", item.id, "button small");
+  }
+  return productCard(
+    item,
+    reducedPrice(state, item),
+    `${groupProgress(state, item)}<div class="group-card-actions">${action}</div>`,
+    tag(item.unlocked ? "Unlocked" : ranked(item), item.unlocked),
+  );
+}
+
+export function groupsView(state, filter) {
+  const batch = currentBatch(state);
+  const entries = visibleItems(state).filter((item) => canOrder(state, item));
+  const remaining = (item) => item.threshold - members(state, item);
+  const shown = entries
+    .filter((item) => {
+      if (filter === "mine") return joinedGroup(state, item);
+      if (filter === "open") return item.unlocked;
+      if (filter === "close") return !item.unlocked && remaining(item) <= 2;
+      return true;
+    })
+    .sort(
+      (a, b) =>
+        Number(Boolean(a.unlocked)) - Number(Boolean(b.unlocked)) ||
+        remaining(a) - remaining(b),
+    );
+  const tabs = groupFilters
+    .map(([key, label]) =>
+      button(
+        label,
+        "group-filter",
+        key,
+        "filter",
+        `aria-pressed="${key === filter}"`,
+      ),
     )
     .join("");
-  return `<div class="catalogue-bar"><div class="filters" aria-label="Filter the edit">${tabs}</div><div class="count"><span aria-live="polite">${entries.length} ${entries.length === 1 ? "piece" : "pieces"}</span>${button(icon("sliders"), "sort", "", "icon-button", 'aria-label="Sort the edit" title="Sort the edit"')}</div></div>${entries.length ? `<div class="product-grid">${products}</div><p class="catalogue-disclaimer disclaimer">${estimateNotice}</p>` : empty("No pieces in this category", "Choose another category or request an estimate.", button("Get an estimate", "estimate", "", "button primary"))}`;
+  const emptyCopy =
+    filter === "mine" && !person(state)
+      ? empty(
+          "Open your demo account",
+          "Sign in to see the groups you’ve joined.",
+          button("Open account", "account", "", "button primary"),
+        )
+      : empty(
+          "No groups to show",
+          "Browse all groups to find a piece you’d like to order.",
+          '<a class="button" href="#collective-unlock">Browse all groups</a>',
+        );
+  return `<div class="group-intro"><div><h1>Collective Unlock</h1><p class="lead">Join a group for free. When enough shoppers join, you can place a group pre-order and share the cost of shipping.</p></div><div class="group-cutoff"><p class="eyebrow">Next group batch · ${batch.id}</p><p>Closes ${shortDate(batch.closes)} at 6 pm LKT</p></div></div><div class="subpage-body">${fold("How Collective Unlock works", '<p>Choose a group and add your interest. Once it reaches its target, confirm your details and decide whether to pay a deposit. You can also <a class="inline-link" href="#edit">pre-order individually</a> from the catalogue.</p>')}<div class="catalogue-bar"><div class="filters" aria-label="Filter groups">${tabs}</div><div class="count" aria-live="polite">${shown.length} ${shown.length === 1 ? "group" : "groups"}</div></div>${shown.length ? `<div class="product-grid">${shown.map((item) => groupCard(state, item)).join("")}</div>${disclaimer()}` : emptyCopy}</div>`;
 }
 
 export function brandsView(state, query = "", filter = "") {
-  const available = state.brands.filter(
-    (brand) =>
-      brand.status === "Approved" &&
-      (!filter || brand.category === filter) &&
-      brand.name.toLowerCase().includes(query.toLowerCase()),
-  );
+  const available = state.brands
+    .filter(
+      (brand) =>
+        brand.status === "Approved" &&
+        brand.name.toLowerCase().includes(query.toLowerCase()),
+    )
+    .map((brand) => ({
+      ...brand,
+      departments: [
+        ...new Set([
+          brand.category,
+          ...state.products
+            .filter((item) => item.brand === brand.name)
+            .map((item) => item.category),
+        ]),
+      ],
+    }))
+    .filter((brand) => !filter || brand.departments.includes(filter))
+    .sort((a, b) => a.name.localeCompare(b.name));
   const directory = available.map((brand) => [
-    `${esc(brand.name)}<p>${esc(brand.category)}</p>`,
+    `<strong>${esc(brand.name)}</strong><p>${esc(brand.departments.join(" · "))}</p>`,
     button("Estimate a piece", "estimate", brand.name, "text-button"),
   ]);
   return `${heading("Brand catalogue", "Approved brands", "Choose a brand to estimate the full price of a piece. Brand approvals are simulated.")}<div class="subpage-body">${form("brand-filter", field("Search approved brands", "query", `type="search" value="${esc(query)}" placeholder="Brand name"`) + select("Category", "category", [["", "All categories"], ...categories], filter) + submit("Search brands"))}${directory.length ? rows(directory) : empty("No brands found", "Try a different name or category.")}</div>`;
@@ -154,7 +269,12 @@ export function estimateForm(state, brand = "") {
   return form(
     "estimate",
     select("Approved brand", "brand", choices, brand) +
-      select("Category", "category", categories) +
+      select(
+        "Category",
+        "category",
+        categories,
+        state.brands.find((entry) => entry.name === brand)?.category,
+      ) +
       field(
         "Product title",
         "title",
@@ -173,7 +293,7 @@ export function estimateForm(state, brand = "") {
         'required maxlength="80" placeholder="e.g. Cotton, or unknown"',
       ) +
       field(
-        "Size or colour",
+        "Size, colour or shade",
         "variant",
         'required maxlength="60" placeholder="e.g. S / White"',
       ) +
@@ -203,14 +323,21 @@ export function estimateForm(state, brand = "") {
   );
 }
 
+const sampleReviews = {
+  shirt:
+    "Roomy shoulders and long cuffs. Check sleeve length if you prefer a closer fit.",
+  sneakers:
+    "Cushioned for daily wear. Check the width guide if you are between sizes.",
+  bag: "Soft leather and a close-underarm fit. The compact interior holds the basics.",
+  sunglasses:
+    "A substantial frame with dark lenses. Check the bridge width for a closer fit.",
+};
+
 export function productView(state, item) {
-  const user = person(state);
-  const joined = (state.interest[item.id] || []).includes(user?.id);
   const inReview = item.confidence === "Low";
-  const available = canOrder(state, item);
   const brandOkay = isApproved(state, item);
   const batch = currentBatch(state);
-  const lines = lineItems(item, state, members(state, item));
+  const lines = lineItems(item, state);
   const tariff = hs[item.tariffCategory || item.category];
   const latest = activeVersion(state);
   const stateLabel = inReview ? item.review || "Awaiting review" : ranked(item);
@@ -220,12 +347,12 @@ export function productView(state, item) {
       (a, b) =>
         Number(b.category === item.category) -
           Number(a.category === item.category) ||
-        Math.abs(reducedPrice(state, a)[0] - total(lines)[0]) -
-          Math.abs(reducedPrice(state, b)[0] - total(lines)[0]),
+        Math.abs(individualPrice(state, a)[0] - total(lines)[0]) -
+          Math.abs(individualPrice(state, b)[0] - total(lines)[0]),
     )[0];
-  const actionList =
+  const groupPanel =
     brandOkay && item.review !== "Rejected"
-      ? `<div class="actions">${button(joined ? "Leave interest" : "Join interest", "interest", item.id, available ? "button" : "button primary")}${available ? button("Pre-order · 50% deposit", "checkout", item.id, "button primary") : ""}</div>`
+      ? `<section class="product-group"><h3>Collective Unlock <span class="subtle">Optional</span></h3>${groupProgress(state, item)}<div class="actions">${button(joinedGroup(state, item) ? "Leave group" : "Join group free", "interest", item.id, "button small")}${canGroupOrder(state, item) ? button("Group pre-order", "group-checkout", item.id, "button primary small") : ""}</div></section>`
       : "";
   const reviewMessage = inReview
     ? notice(
@@ -243,7 +370,7 @@ export function productView(state, item) {
       lineItems(item, state, Math.max(members(state, item), item.threshold)),
     ),
   );
-  return `<div class="detail-grid"><div>${art(item)}</div><div class="detail-content"><div class="actions">${tag(stateLabel, item.unlocked && !inReview)}${tag(`${item.confidence} confidence`)}</div><p>${esc(item.description)}</p><p class="subtle">${esc(item.variant)} · ${esc(item.material)} · ${esc(item.currency)} ${item.price} each</p><p class="price">${range(total(lines))}</p>${meter(state, item)}<p class="group-meta"><span>${members(state, item)} of ${item.threshold} interested</span><span>Closes ${shortDate(batch.closes)}</span></p>${brandOkay ? "" : notice("This brand is unavailable for new pre-orders.")}${reviewMessage}${actionList}</div></div>${disclaimer()}${fold("Landed cost breakdown", rows(names.map((name, index) => [name, range(lines[index])]).concat([["Estimated total", range(total(lines)), true]])))}${fold("Why this range?", `<p>HS ${tariff.code} · ${tariff.wording}. ${esc(label)}</p><p>Candidate categories include ${tariff.alt} and ${hs[categories.find((category) => category !== item.category)].code}. The exchange rate includes a ${latest.buffer}% buffer in each direction.</p>`)}${fold(
+  return `<div class="detail-grid"><div>${art(item)}</div><div class="detail-content"><div class="actions">${tag(`${item.confidence} confidence`)}</div><p>${esc(item.description)}</p><p class="subtle">${esc(item.variant)} · ${esc(item.material)} · ${esc(item.currency)} ${item.price} each</p><p class="price">${range(total(lines))}</p><p class="subtle">Next batch closes ${shortDate(batch.closes)}.</p>${brandOkay ? "" : notice("This brand is unavailable for new pre-orders.")}${reviewMessage}${canOrder(state, item) ? `<div class="actions">${button("Pre-order · 50% deposit", "checkout", item.id, "button primary")}</div>` : ""}${groupPanel}</div></div>${item.sample ? '<p class="disclaimer">Illustrative product photo.</p>' : ""}${disclaimer()}${fold("Landed cost breakdown", rows(names.map((name, index) => [name, range(lines[index])]).concat([["Estimated total", range(total(lines)), true]])))}${fold("Why this range?", `<p>Simulated tariff reference HS ${tariff.code} · ${tariff.wording}. ${esc(label)}</p><p>Other candidates include ${tariff.alt}. The exchange rate includes a ${latest.buffer}% buffer in each direction.</p>`)}${fold(
     "Compare shipping and availability",
     `${rows([
       ["Estimated total on your own", solo],
@@ -255,7 +382,7 @@ export function productView(state, item) {
           : `${Math.max(0, item.threshold - members(state, item))} more needed · ${esc(item.popularity)}`,
       ],
     ])}<p>Availability reflects simulated group demand. Store stock is checked when the batch is purchased.</p>`,
-  )}${item.image ? fold("Sample review themes", `<p>${{ shirt: "Roomy shoulders and long cuffs. Check sleeve length if you prefer a closer fit.", sneakers: "Cushioned for daily wear. Check the width guide if you are between sizes.", bag: "Soft leather and a close-underarm fit. The compact interior holds the basics.", sunglasses: "A substantial frame with dark lenses. Check the bridge width for a closer fit." }[item.image]} These themes are illustrative.</p>`) : ""}${recommended ? `<p class="subtle">You may also like ${button(esc(recommended.title), "product", recommended.id, "text-button")}.</p>` : ""}`;
+  )}${sampleReviews[item.image] ? fold("Sample review themes", `<p>${sampleReviews[item.image]} These themes are illustrative.</p>`) : ""}${recommended ? `<p class="subtle">You may also like ${button(esc(recommended.title), "product", recommended.id, "text-button")}.</p>` : ""}`;
 }
 
 export function accountView(state) {
@@ -285,25 +412,38 @@ export function alertsView(state) {
   return `${notice(user.emailOptIn ? "In-app notifications · Simulated email is enabled." : "In-app notifications · Simulated email is disabled.")}${alerts.length ? `<ol class="timeline">${alerts.map((entry) => `<li>${esc(entry.message)}<time>${date(entry.at)}</time></li>`).join("")}</ol>` : empty("You’re all caught up", "Updates appear here as your groups and orders progress.")}`;
 }
 
-export function checkoutReviewView(item, quote, details) {
+export function checkoutReviewView(item, quote, details, mode) {
   return `${notice("Confirming your details is free. You can leave before paying the deposit.")}${rows(
     [
       ["Product", esc(item.title)],
+      [
+        "Order type",
+        mode === "group" ? "Collective Unlock group" : "Individual pre-order",
+      ],
       ["Estimated total", range(quote.estimate)],
       ["Deposit if you proceed", money(quote.deposit)],
       ["Order batch", `${quote.batch.id} · ${shortDate(quote.batch.closes)}`],
     ],
-  )}${disclaimer()}${form("review-checkout", field("Size or colour", "variant", `required maxlength="60" value="${esc(details.variant)}"`, true) + area("Delivery address", "address", details.address, 'required maxlength="220" minlength="8"') + submit("Confirm details"), item.id)}`;
+  )}${disclaimer()}${form("review-checkout", `<input type="hidden" name="mode" value="${mode}">` + field(item.category === "Makeup" ? "Shade" : "Size or colour", "variant", `required maxlength="60" value="${esc(details.variant)}"`, true) + area("Delivery address", "address", details.address, 'required maxlength="220" minlength="8"') + submit("Confirm details"), item.id)}`;
 }
 
 export function checkoutPaymentView(item, quote, details) {
   return `${notice(testNotice, "test")}${rows([
     ["Product", esc(item.title)],
-    ["Size or colour", esc(details.variant)],
+    [
+      "Order type",
+      details.mode === "group"
+        ? "Collective Unlock group"
+        : "Individual pre-order",
+    ],
+    [
+      item.category === "Makeup" ? "Shade" : "Size or colour",
+      esc(details.variant),
+    ],
     ["Delivery address", esc(details.address)],
     ["Estimated total", range(quote.estimate)],
     ["Deposit · 50% of the estimate midpoint", money(quote.deposit), true],
-  ])}${disclaimer()}${form("checkout", check("I accept the prototype terms and cancellation window.", "terms", false, true) + check("I appoint Ordely as my purchasing agent for this sandbox order.", "agent", false, true) + select("Simulate payment result", "result", ["Success", "Failure"], "Success", true) + submit(`Pay ${money(quote.deposit)} in test mode`), item.id)}${button("Edit confirmed details", "checkout", item.id, "text-button")}`;
+  ])}${disclaimer()}${form("checkout", check("I accept the prototype terms and cancellation window.", "terms", false, true) + check("I appoint Ordely as my purchasing agent for this sandbox order.", "agent", false, true) + select("Simulate payment result", "result", ["Success", "Failure"], "Success", true) + submit(`Pay ${money(quote.deposit)} in test mode`), item.id)}${button("Edit confirmed details", details.mode === "group" ? "group-checkout" : "checkout", item.id, "text-button")}`;
 }
 
 export function orderView(state, order) {
@@ -317,6 +457,13 @@ export function orderView(state, order) {
     ["Estimated total", range(order.estimate)],
     ["Deposit", `${money(order.deposit)} · ${esc(order.payment)}`],
   ];
+  if (order.mode)
+    details.splice(1, 0, [
+      "Order type",
+      order.mode === "group"
+        ? "Collective Unlock group"
+        : "Individual pre-order",
+    ]);
   if (cleared)
     details.push(
       ["Final price", money(now), true],

@@ -1,6 +1,6 @@
 # Ordely
 
-An interactive, frontend-only prototype for group pre-orders of overseas fashion in Sri Lanka. The customer site and the Admin demo use the same browser-local state. The sample catalogue, brand approvals, classifications, rates, evaluation results and payments are simulated. Product URLs are stored as supplied.
+An interactive, frontend-only prototype for pre-ordering overseas fashion and makeup in Sri Lanka. Shoppers can order individually or join an optional Collective Unlock purchase group. The customer site and the Admin demo use the same browser-local state. The catalogue photos are illustrative. Brand approvals, classifications, rates, evaluation results and payments are simulated. Product URLs are stored as supplied.
 
 ## Run locally
 

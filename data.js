@@ -1,4 +1,13 @@
-export const categories = ["Apparel", "Footwear", "Bags", "Accessories"];
+import { catalogueBrands, catalogueProducts } from "./catalogue-data.js";
+
+export const categories = [
+  "Apparel",
+  "Footwear",
+  "Bags",
+  "Accessories",
+  "Makeup",
+];
+const catalogueRevision = 2;
 export const estimateNotice =
   "Simulated estimate. Final charges depend on the exchange rate and actual customs costs.";
 export const testNotice =
@@ -54,6 +63,14 @@ export const hs = {
     duty: 15,
     levies: 6,
     weight: 0.19,
+  },
+  Makeup: {
+    code: "3304.99",
+    wording: "Other beauty or make-up preparations",
+    alt: "3304.10 · Lip make-up preparations or 3304.20 · Eye make-up preparations",
+    duty: 16,
+    levies: 7,
+    weight: 0.12,
   },
 };
 
@@ -248,8 +265,12 @@ export function total(lines) {
   return lines.reduce(([lo, hi], [a, b]) => [lo + a, hi + b], [0, 0]);
 }
 export const midpoint = ([lo, hi]) => (lo + hi) / 2;
-export function checkoutQuote(state, item) {
-  const lines = lineItems(item, state, members(state, item));
+export function checkoutQuote(state, item, mode = "individual") {
+  const lines = lineItems(
+    item,
+    state,
+    mode === "group" ? members(state, item) : 1,
+  );
   const estimate = total(lines);
   return {
     lines,
@@ -266,17 +287,19 @@ export const isApproved = (state, item) =>
   );
 export const canOrder = (state, item) =>
   isApproved(state, item) &&
-  item.unlocked &&
   ["High", "Medium"].includes(item.confidence) &&
   item.review !== "Rejected";
+export const canGroupOrder = (state, item) =>
+  item.unlocked && joinedGroup(state, item) && canOrder(state, item);
 export function classification(item) {
   const text =
     `${item.title} ${item.description} ${item.material}`.toLowerCase();
   const cue = {
-    Apparel: /cotton|linen|shirt|denim|wool|poplin/,
+    Apparel: /cotton|linen|shirt|denim|wool|poplin|legging|knit/,
     Footwear: /shoe|runner|mesh|sneaker|sole|suede/,
     Bags: /bag|leather|canvas|tote/,
-    Accessories: /sunglass|acetate|glasses|frames|eyewear/,
+    Accessories: /sunglass|acetate|glasses|frames|eyewear|cap|twill|hoop|brass/,
+    Makeup: /lipstick|lip balm|lip tint|gloss|blush|mascara|eyeshadow|powder/,
   };
   if (
     item.material.trim().length < 3 ||
@@ -334,8 +357,9 @@ function initialState() {
     sscl: 2.5,
   };
   const state = {
-    products,
-    brands,
+    catalogueRevision,
+    products: structuredClone([...products, ...catalogueProducts]),
+    brands: structuredClone([...brands, ...catalogueBrands]),
     versions: [firstVersion],
     people: [demoUser],
     active: null,
@@ -391,7 +415,27 @@ function initialState() {
 const key = "ordely-prototype-v1";
 export function load() {
   try {
-    return JSON.parse(localStorage.getItem(key)) || initialState();
+    const state = JSON.parse(localStorage.getItem(key));
+    if (!state) return initialState();
+    if ((state.catalogueRevision ?? 1) < catalogueRevision) {
+      state.products.push(
+        ...structuredClone(
+          catalogueProducts.filter(
+            (product) =>
+              !state.products.some((entry) => entry.id === product.id),
+          ),
+        ),
+      );
+      state.brands.push(
+        ...structuredClone(
+          catalogueBrands.filter(
+            (brand) => !state.brands.some((entry) => entry.name === brand.name),
+          ),
+        ),
+      );
+      state.catalogueRevision = catalogueRevision;
+    }
+    return state;
   } catch {
     return initialState();
   }
@@ -399,6 +443,8 @@ export function load() {
 export const save = (state) => localStorage.setItem(key, JSON.stringify(state));
 export const person = (state) =>
   state.people.find((entry) => entry.id === state.active);
+export const joinedGroup = (state, item) =>
+  Boolean(state.active && state.interest[item.id]?.includes(state.active));
 export function notify(state, user, message) {
   const alerts = (state.alerts[user] ||= []);
   alerts.unshift({ message, at: Date.now(), read: false });

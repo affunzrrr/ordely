@@ -59,7 +59,7 @@ export const table = (label, headings, data) =>
   `<div class="table-wrap"><table><caption>${label}</caption><thead><tr>${headings.map((heading) => `<th scope="col">${heading}</th>`).join("")}</tr></thead><tbody>${data.map((row) => `<tr>${row.map((value) => `<td>${value}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
 export const art = (item) =>
   item.image
-    ? `<img src="./assets/${esc(item.image)}-color.webp" width="621" height="621" loading="lazy" alt="${esc(item.title)}">`
+    ? `<img src="./assets/${esc(item.image)}-color.webp" width="${item.sample ? 512 : 621}" height="${item.sample ? 512 : 621}" loading="lazy" alt="${esc(item.title)}">`
     : `<span class="missing-art" aria-label="No product photograph">${icon("shirt")}</span>`;
 export const heading = (eyebrow, title, copy = "") =>
   `<div class="section-head"><div><p class="eyebrow">${eyebrow}</p><h1>${title}<span>.</span></h1>${copy ? `<p class="lead">${copy}</p>` : ""}</div></div>`;
