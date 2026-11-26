@@ -64,7 +64,7 @@ export function adminView(state, section, filters = {}) {
     orders,
     evaluation,
   }[section](state, filters);
-  return `${heading("Admin demo", title, "Simulation workspace · Changes are visible in this browser only.")}<nav class="admin-tabs" aria-label="Admin navigation">${tabs.map(([id, label]) => `<a href="#admin/${id}" ${section === id ? 'aria-current="page"' : ""}>${label}</a>`).join("")}</nav><div class="subpage-body">${body}</div>`;
+  return `${heading("Admin demo", title, "Simulation workspace · Changes are visible in this browser only.")}<nav class="admin-tabs" aria-label="Admin navigation">${tabs.map(([id, label]) => `<a href="./admin/?tab=${id}" ${section === id ? 'aria-current="page"' : ""}>${label}</a>`).join("")}</nav><div class="subpage-body">${body}</div>`;
 }
 
 function overview(state) {

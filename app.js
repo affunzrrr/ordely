@@ -22,6 +22,7 @@ import {
   shortDate,
 } from "./data.js";
 import { adminDialog, adminView, manifest, submitAdmin } from "./admin.js";
+import { identifyPage, legacyHref, siteRoot } from "./routes.mjs";
 import {
   accountView,
   alertsView,
@@ -42,21 +43,21 @@ import {
   signupView,
   visibleItems,
 } from "./customer.js";
-import { button, icon, iconButton, notice } from "./ui.js";
+import { button, heading, icon, iconButton, notice } from "./ui.js";
 
 let state = load();
-let sort = "featured";
-let brandFilters = {};
 let orderFilters = {};
 let pending = null;
 let checkoutDraft = null;
 let estimateTimer = null;
 let toastTimer;
 const modal = document.querySelector("#dialog");
-const home = document.querySelector("#home-view");
 const page = document.querySelector("#page-view");
-const catalogue = document.querySelector("#catalogue");
 const toast = document.querySelector("#toast");
+const currentPage = identifyPage(new URL(location.href));
+const params = () => new URL(location.href).searchParams;
+const sortOrder = () =>
+  params().get("sort") === "price" ? "price" : "featured";
 
 function normalizeOrders() {
   let changed = false;
@@ -77,7 +78,7 @@ function render() {
   const unread =
     user && (state.alerts[user.id] || []).some((entry) => !entry.read);
   document.querySelector("#batch-strip").innerHTML =
-    `<div class="batch-copy">${icon("calendar")}<span>Batch closes ${shortDate(batch.closes)}<span class="batch-time">, 6 pm LKT</span></span><b class="batch-time">·</b><span class="batch-time">${batch.days} ${batch.days === 1 ? "day" : "days"} left</span></div><a class="strip-unlock" href="#collective-unlock">Collective Unlock ${icon("up-right")}</a>`;
+    `<div class="batch-copy">${icon("calendar")}<span>Batch closes ${shortDate(batch.closes)}<span class="batch-time">, 6 pm LKT</span></span><b class="batch-time">·</b><span class="batch-time">${batch.days} ${batch.days === 1 ? "day" : "days"} left</span></div><a class="strip-unlock" href="./collective-unlock/">Collective Unlock ${icon("up-right")}</a>`;
   document.querySelector("#nav-actions").innerHTML =
     iconButton("Search approved brands", "search", "search") +
     iconButton("Account", "user", "account") +
@@ -88,46 +89,55 @@ function render() {
       "",
       unread ? '<span class="unread"></span>' : "",
     ) +
-    `<a href="#orders" class="icon-button" aria-label="My orders" title="My orders">${icon("bag")}</a>` +
+    `<a href="./orders/" class="icon-button" aria-label="My orders" title="My orders">${icon("bag")}</a>` +
     iconButton("Menu", "menu", "menu", "mobile-menu");
-  const [route, section] = (location.hash.slice(1) || "home").split("/");
-  const category =
-    route === "edit"
-      ? categories.find((name) => name.toLowerCase() === section) ||
-        "All pieces"
-      : "All pieces";
+  document.querySelector(".skip").href = new URL("#main", location.href);
   for (const link of document.querySelectorAll(".main-nav a, .strip-unlock")) {
+    const destination = identifyPage(new URL(link.href));
     if (
-      link.hash === location.hash ||
-      (["brands", "collective-unlock"].includes(route) &&
-        link.hash === `#${route}`)
+      destination.id === currentPage.id &&
+      destination.category === currentPage.category
     )
-      link.setAttribute("aria-current", "location");
+      link.setAttribute("aria-current", "page");
     else link.removeAttribute("aria-current");
   }
-  const subpage = ["orders", "brands", "admin", "collective-unlock"].includes(
-    route,
-  );
-  home.hidden = subpage;
-  page.hidden = !subpage;
-  if (route === "orders") page.innerHTML = ordersView(state);
-  else if (route === "brands") {
+  const query = params();
+  if (currentPage.id === "orders") page.innerHTML = ordersView(state);
+  else if (currentPage.id === "brands") {
     const linkedBrand = state.brands.find(
-      ({ name }) => name.toLowerCase().replaceAll(" ", "-") === section,
+      ({ name }) =>
+        name.toLowerCase().replaceAll(" ", "-") === query.get("brand"),
     );
     page.innerHTML = brandsView(
       state,
-      linkedBrand?.name ?? brandFilters.query,
-      linkedBrand ? "" : brandFilters.category,
+      linkedBrand?.name ?? query.get("query") ?? "",
+      query.get("category") ?? "",
     );
-  } else if (route === "admin")
-    page.innerHTML = adminView(state, section || "overview", orderFilters);
-  else if (route === "collective-unlock") {
-    const filter = groupFilters.some(([key]) => key === section)
-      ? section
-      : "all";
+  } else if (currentPage.id === "admin") {
+    page.innerHTML = adminView(
+      state,
+      query.get("tab") || "overview",
+      orderFilters,
+    );
+  } else if (currentPage.id === "groups") {
+    const filter =
+      groupFilters.find(([key]) => key === query.get("filter"))?.[0] ?? "all";
     page.innerHTML = groupsView(state, filter);
-  } else catalogue.innerHTML = catalogueView(state, category, sort);
+  } else if (currentPage.id === "shop") {
+    page.innerHTML =
+      heading(
+        "Overseas catalogue",
+        currentPage.title,
+        "See estimated prices in LKR and choose what to pre-order.",
+      ) + catalogueView(state, currentPage.category, sortOrder());
+  } else {
+    document.querySelector("#catalogue").innerHTML = catalogueView(
+      state,
+      "All pieces",
+      sortOrder(),
+      false,
+    );
+  }
 }
 
 function openDialog(title, body, kicker = "", wide = false) {
@@ -227,7 +237,7 @@ function runAction(action, id = "") {
     case "menu":
       openDialog(
         "Menu",
-        '<div class="actions"><a class="button" href="#edit">The Edit</a><a class="button" href="#brands">Brands</a><a class="button" href="#collective-unlock">Collective Unlock</a><a class="button" href="#how">How it works</a><a class="button" href="#orders">My orders</a></div>',
+        '<div class="actions"><a class="button" href="./shop/">The Edit</a><a class="button" href="./brands/">Brands</a><a class="button" href="./collective-unlock/">Collective Unlock</a><a class="button" href="./#how">How it works</a><a class="button" href="./orders/">My orders</a></div>',
       );
       break;
     case "search":
@@ -269,17 +279,6 @@ function runAction(action, id = "") {
     case "help":
       openDialog("Help and terms", helpView());
       break;
-    case "filter":
-      history.replaceState(
-        null,
-        "",
-        id === "All pieces" ? "#edit" : `#edit/${id.toLowerCase()}`,
-      );
-      render();
-      catalogue
-        .querySelector('[aria-pressed="true"]')
-        ?.focus({ preventScroll: true });
-      break;
     case "sort":
       openDialog(
         "Sort the edit",
@@ -292,31 +291,24 @@ function runAction(action, id = "") {
               label,
               "sort-set",
               key,
-              key === sort ? "button primary" : "button",
+              key === sortOrder() ? "button primary" : "button",
             ),
           )
           .join("")}</div>`,
       );
       break;
-    case "group-filter":
-      history.replaceState(
-        null,
-        "",
-        id === "all" ? "#collective-unlock" : `#collective-unlock/${id}`,
-      );
-      render();
-      page
-        .querySelector('[aria-pressed="true"]')
-        ?.focus({ preventScroll: true });
-      break;
-    case "sort-set":
-      sort = id;
+    case "sort-set": {
+      const url = new URL(location.href);
+      if (id === "price") url.searchParams.set("sort", id);
+      else url.searchParams.delete("sort");
+      history.replaceState(null, "", url);
       closeDialog();
       render();
-      catalogue
+      document
         .querySelector('[data-action="sort"]')
-        .focus({ preventScroll: true });
+        ?.focus({ preventScroll: true });
       break;
+    }
     case "estimate":
       openDialog(
         "Get an estimate",
@@ -388,8 +380,7 @@ function runAction(action, id = "") {
       manifest(state, id);
       break;
     default: {
-      if (!action.startsWith("admin-") || !location.hash.startsWith("#admin"))
-        break;
+      if (!action.startsWith("admin-") || currentPage.id !== "admin") break;
       const details = adminDialog(state, action, id);
       if (details) openDialog(details[0], details[1], "Admin demo", details[2]);
     }
@@ -615,10 +606,12 @@ function payments(action, id, data) {
 
 function submitForm(action, id, data) {
   if (action === "brand-filter" || action === "search") {
-    brandFilters = data;
+    const destination = new URL("brands/", siteRoot);
+    if (data.query) destination.searchParams.set("query", data.query);
+    if (data.category) destination.searchParams.set("category", data.category);
     closeDialog();
-    if (location.hash === "#brands") render();
-    else location.hash = "brands";
+    if (location.href === destination.href) render();
+    else location.assign(destination.href);
   } else if (action === "login" || action === "signup") {
     if (action === "signup" && !data.name) throw Error("Enter a demo name.");
     const existing = state.people.find(
@@ -663,10 +656,7 @@ function submitForm(action, id, data) {
   else if (action === "admin-filter") {
     orderFilters = data;
     render();
-  } else if (
-    action.startsWith("admin-") &&
-    location.hash.startsWith("#admin")
-  ) {
+  } else if (action.startsWith("admin-") && currentPage.id === "admin") {
     const next = submitAdmin(state, action, id, data);
     persist();
     if (next) runAction(...next);
@@ -676,13 +666,18 @@ function submitForm(action, id, data) {
 }
 
 document.addEventListener("click", (event) => {
-  const link = event.target.closest('a[href^="#"]');
-  if (link && modal.open) {
+  const link = event.target.closest("dialog a[href]");
+  if (
+    link &&
+    modal.open &&
+    !event.ctrlKey &&
+    !event.metaKey &&
+    !event.shiftKey &&
+    !event.altKey
+  ) {
     pending = null;
     closeDialog();
   }
-  if (link?.hash === location.hash && link.hash.startsWith("#edit/"))
-    scrollToRoute();
   const target = event.target.closest("[data-action]");
   if (!target) return;
   state = load();
@@ -726,22 +721,28 @@ modal.addEventListener("click", (event) => {
     closeDialog();
   }
 });
-function scrollToRoute() {
-  const route = location.hash.slice(1).split("/")[0];
-  const anchor = route !== "home" && document.getElementById(route);
-  if (anchor && (route === "main" || !home.hidden)) anchor.scrollIntoView();
-  else window.scrollTo(0, 0);
+function redirectLegacyLink() {
+  const destination = currentPage.id === "home" && legacyHref(location.hash);
+  if (!destination) return false;
+  location.replace(new URL(destination, siteRoot));
+  return true;
 }
-window.addEventListener("hashchange", () => {
-  render();
-  scrollToRoute();
-});
+window.addEventListener("hashchange", redirectLegacyLink);
 window.addEventListener("storage", () => {
   state = load();
   render();
 });
-document.querySelectorAll("[data-icon]").forEach((node) => {
-  node.innerHTML = icon(node.dataset.icon);
+window.addEventListener("pageshow", (event) => {
+  if (event.persisted) {
+    state = load();
+    render();
+  }
 });
-render();
-if (location.hash) requestAnimationFrame(scrollToRoute);
+if (!redirectLegacyLink()) {
+  document.querySelectorAll("[data-icon]").forEach((node) => {
+    node.innerHTML = icon(node.dataset.icon);
+  });
+  render();
+  const anchor = document.getElementById(location.hash.slice(1));
+  if (anchor) requestAnimationFrame(() => anchor.scrollIntoView());
+}

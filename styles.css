@@ -435,6 +435,8 @@ textarea:focus-visible {
   scrollbar-width: thin;
 }
 .filter {
+  display: inline-flex;
+  align-items: center;
   border: 0;
   border-bottom: 1px solid transparent;
   white-space: nowrap;
@@ -446,10 +448,10 @@ textarea:focus-visible {
   font-weight: 600;
 }
 .filter:hover,
-.filter[aria-pressed="true"] {
+.filter[aria-current="page"] {
   color: var(--ink);
 }
-.filter[aria-pressed="true"] {
+.filter[aria-current="page"] {
   border-color: var(--ink);
 }
 .count {

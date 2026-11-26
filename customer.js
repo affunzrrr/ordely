@@ -23,6 +23,7 @@ import {
   total,
   canOrder,
 } from "./data.js";
+import { shopHref } from "./routes.mjs";
 import {
   area,
   art,
@@ -57,7 +58,7 @@ const individualPrice = (state, item) => total(lineItems(item, state));
 const meter = (state, item) =>
   `<div class="progress" role="progressbar" aria-label="Group progress" aria-valuemin="0" aria-valuemax="${item.threshold}" aria-valuenow="${Math.min(item.threshold, members(state, item))}"><span style="width:${item.unlocked ? 100 : Math.min(100, (members(state, item) * 100) / item.threshold)}%"></span></div>`;
 
-export function catalogueView(state, filter, sort) {
+export function catalogueView(state, filter, sort, showCurrent = true) {
   const entries = visibleItems(state).filter(
     (item) => filter === "All pieces" || item.category === filter,
   );
@@ -66,17 +67,12 @@ export function catalogueView(state, filter, sort) {
       (a, b) => individualPrice(state, a)[0] - individualPrice(state, b)[0],
     );
   const tabs = ["All pieces", ...categories]
-    .map((label) =>
-      button(
-        esc(label),
-        "filter",
-        label,
-        "filter",
-        `aria-pressed="${filter === label}"`,
-      ),
+    .map(
+      (label) =>
+        `<a class="filter" href="${shopHref(label, sort)}" ${showCurrent && filter === label ? 'aria-current="page"' : ""}>${esc(label)}</a>`,
     )
     .join("");
-  return `<div class="catalogue-bar"><div class="filters" aria-label="Filter the edit">${tabs}</div><div class="count"><span aria-live="polite">${entries.length} ${entries.length === 1 ? "piece" : "pieces"}</span>${button(icon("sliders"), "sort", "", "icon-button", 'aria-label="Sort the edit" title="Sort the edit"')}</div></div>${entries.length ? `<div class="product-grid">${entries.map((item) => catalogueCard(state, item)).join("")}</div><p class="catalogue-disclaimer disclaimer">Illustrative product photos. ${estimateNotice}</p>` : empty("No pieces in this category", "Choose another category or request an estimate.", button("Get an estimate", "estimate", "", "button primary"))}`;
+  return `<div class="catalogue-bar"><nav class="filters" aria-label="Catalogue departments">${tabs}</nav><div class="count"><span aria-live="polite">${entries.length} ${entries.length === 1 ? "piece" : "pieces"}</span>${button(icon("sliders"), "sort", "", "icon-button", 'aria-label="Sort the edit" title="Sort the edit"')}</div></div>${entries.length ? `<div class="product-grid">${entries.map((item) => catalogueCard(state, item)).join("")}</div><p class="catalogue-disclaimer disclaimer">Illustrative product photos. ${estimateNotice}</p>` : empty("No pieces in this category", "Choose another category or request an estimate.", button("Get an estimate", "estimate", "", "button primary"))}`;
 }
 
 function productCard(item, price, content, badge = "") {
@@ -164,14 +160,9 @@ export function groupsView(state, filter) {
         remaining(a) - remaining(b),
     );
   const tabs = groupFilters
-    .map(([key, label]) =>
-      button(
-        label,
-        "group-filter",
-        key,
-        "filter",
-        `aria-pressed="${key === filter}"`,
-      ),
+    .map(
+      ([key, label]) =>
+        `<a class="filter" href="./collective-unlock/${key === "all" ? "" : `?filter=${key}`}" ${key === filter ? 'aria-current="page"' : ""}>${label}</a>`,
     )
     .join("");
   const emptyCopy =
@@ -184,9 +175,9 @@ export function groupsView(state, filter) {
       : empty(
           "No groups to show",
           "Browse all groups to find a piece you’d like to order.",
-          '<a class="button" href="#collective-unlock">Browse all groups</a>',
+          '<a class="button" href="./collective-unlock/">Browse all groups</a>',
         );
-  return `<div class="group-intro"><div><h1>Collective Unlock</h1><p class="lead">Join a group for free. When enough shoppers join, you can place a group pre-order and share the cost of shipping.</p></div><div class="group-cutoff"><p class="eyebrow">Next group batch · ${batch.id}</p><p>Closes ${shortDate(batch.closes)} at 6 pm LKT</p></div></div><div class="subpage-body">${fold("How Collective Unlock works", '<p>Choose a group and add your interest. Once it reaches its target, confirm your details and decide whether to pay a deposit. You can also <a class="inline-link" href="#edit">pre-order individually</a> from the catalogue.</p>')}<div class="catalogue-bar"><div class="filters" aria-label="Filter groups">${tabs}</div><div class="count" aria-live="polite">${shown.length} ${shown.length === 1 ? "group" : "groups"}</div></div>${shown.length ? `<div class="product-grid">${shown.map((item) => groupCard(state, item)).join("")}</div>${disclaimer()}` : emptyCopy}</div>`;
+  return `<div class="group-intro"><div><h1>Collective Unlock</h1><p class="lead">Join a group for free. When enough shoppers join, you can place a group pre-order and share the cost of shipping.</p></div><div class="group-cutoff"><p class="eyebrow">Next group batch · ${batch.id}</p><p>Closes ${shortDate(batch.closes)} at 6 pm LKT</p></div></div><div class="subpage-body">${fold("How Collective Unlock works", '<p>Choose a group and add your interest. Once it reaches its target, confirm your details and decide whether to pay a deposit. You can also <a class="inline-link" href="./shop/">pre-order individually</a> from the catalogue.</p>')}<div class="catalogue-bar"><nav class="filters" aria-label="Filter groups">${tabs}</nav><div class="count" aria-live="polite">${shown.length} ${shown.length === 1 ? "group" : "groups"}</div></div>${shown.length ? `<div class="product-grid">${shown.map((item) => groupCard(state, item)).join("")}</div>${disclaimer()}` : emptyCopy}</div>`;
 }
 
 export function brandsView(state, query = "", filter = "") {
@@ -254,7 +245,7 @@ export function ordersView(state) {
         `<article class="order-entry"><h3>${esc(order.item.title)}</h3>${tag(order.status, order.status === "Ready for balance")}<p class="subtle">${esc(order.id)} · ${esc(order.batch)} · ${order.actual != null ? money(finalTotal(order)) : range(order.estimate)}</p>${button("Track order", "order", order.id, "text-button")}</article>`,
     )
     .join("");
-  return `${intro}<div class="subpage-body">${body ? `<section class="order-list">${body}</section>${disclaimer()}` : empty("No orders yet", "Explore the edit and pre-order when a group opens.", '<a class="button primary" href="#edit">Explore the edit</a>')}${groups.length ? `<section><h3>Your groups</h3>${rows(groups.map((item) => [esc(item.title), button(ranked(item), "product", item.id, "text-button")]))}</section>` : ""}${requests.length ? `<section><h3>Your estimate reviews</h3>${rows(requests.map((item) => [esc(item.title), button(item.review || "Awaiting review", "product", item.id, "text-button")]))}</section>` : ""}</div>`;
+  return `${intro}<div class="subpage-body">${body ? `<section class="order-list">${body}</section>${disclaimer()}` : empty("No orders yet", "Browse the catalogue and place a pre-order.", '<a class="button primary" href="./shop/">Explore the edit</a>')}${groups.length ? `<section><h3>Your groups</h3>${rows(groups.map((item) => [esc(item.title), button(ranked(item), "product", item.id, "text-button")]))}</section>` : ""}${requests.length ? `<section><h3>Your estimate reviews</h3>${rows(requests.map((item) => [esc(item.title), button(item.review || "Awaiting review", "product", item.id, "text-button")]))}</section>` : ""}</div>`;
 }
 
 export function estimateForm(state, brand = "") {
@@ -392,7 +383,7 @@ export function accountView(state) {
   return `${rows([
     ["Profile", esc(user.name)],
     ["Email", esc(user.email)],
-  ])}${form("preferences", area("Default delivery address", "address", user.address, 'maxlength="220"') + check("Opt in to simulated email notifications", "emailOptIn", user.emailOptIn) + submit("Save preferences"))}<div class="actions"><a class="button" href="#orders">My orders</a>${button("Sign out", "signout")}</div>`;
+  ])}${form("preferences", area("Default delivery address", "address", user.address, 'maxlength="220"') + check("Opt in to simulated email notifications", "emailOptIn", user.emailOptIn) + submit("Save preferences"))}<div class="actions"><a class="button" href="./orders/">My orders</a>${button("Sign out", "signout")}</div>`;
 }
 
 export const signupView = () =>
