@@ -6,9 +6,14 @@ const homepage = await readFile(
   "utf8",
 );
 const main = /<main id="main">[\s\S]*?<\/main>/;
-if (!homepage.includes('<base href="./" />') || !main.test(homepage)) {
+const canonical = homepage.match(/<link rel="canonical" href="([^"]+)" \/>/);
+if (
+  !homepage.includes('<base href="./" />') ||
+  !main.test(homepage) ||
+  !canonical
+) {
   throw new Error(
-    "The homepage must contain the shared base URL and main element.",
+    "The homepage must contain the shared base URL, canonical URL, and main element.",
   );
 }
 
@@ -21,6 +26,10 @@ for (const page of pages) {
       "<!doctype html>\n<!-- Generated from index.html by build-pages.mjs. -->",
     )
     .replace('<base href="./" />', `<base href="${root}" />`)
+    .replace(
+      canonical[0],
+      `<link rel="canonical" href="${new URL(page.path, canonical[1])}" />`,
+    )
     .replace(
       'class="skip" href="#main"',
       `class="skip" href="./${page.path}#main"`,
