@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Shop overseas fashion together and see the estimated cost in Sri Lankan rupees before you order."
+    />
+    <meta name="theme-color" content="#f8f7f4" />
+    <title>Ordely — Overseas fashion, ordered together</title>
+    <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml" />
+    <link
+      rel="preload"
+      href="./assets/instrument-serif.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link rel="stylesheet" href="./styles.css" />
+    <script type="module" src="./app.js"></script>
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <div class="batch-strip" id="batch-strip">
+      New batches close every other Friday · Sri Lanka
+    </div>
+    <header class="site-header">
+      <div class="nav wrap">
+        <a class="wordmark" href="#home" aria-label="Ordely home"
+          >ordely<span>.</span></a
+        >
+        <nav class="main-nav" aria-label="Main navigation">
+          <a href="#edit">The Edit</a><a href="#brands">Brands</a
+          ><a href="#how">How it works</a>
+        </nav>
+        <div class="nav-actions" id="nav-actions"></div>
+      </div>
+    </header>
+    <main id="main">
+      <div id="home-view">
+        <section class="hero wrap" id="home" aria-labelledby="hero-title">
+          <div class="hero-copy">
+            <p class="eyebrow hero-kicker">
+              <span></span> Overseas fashion, shared shipping
+            </p>
+            <h1 id="hero-title">Good finds.<br /><em>Better together.</em></h1>
+            <p>
+              Shop the pieces you love from overseas. Order in a group, share
+              the shipping, and see what it’ll cost in rupees before you commit.
+            </p>
+            <div class="hero-actions">
+              <a class="button primary" href="#edit"
+                >Explore the edit <span data-icon="arrow"></span></a
+              ><button class="text-button" data-action="estimate">
+                Get an estimate <span data-icon="up-right"></span>
+              </button>
+            </div>
+          </div>
+          <figure class="hero-art">
+            <img
+              src="./assets/editorial.webp"
+              width="1450"
+              height="967"
+              fetchpriority="high"
+              alt="Woman in an oversized black blazer against concrete walls"
+            />
+            <figcaption>
+              <span>THE ORDELY EDIT</span><span id="hero-batch"></span>
+            </figcaption>
+          </figure>
+        </section>
+        <section class="edit wrap" id="edit" aria-labelledby="edit-title">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Collective unlock</p>
+              <h2 id="edit-title">The current edit<span>.</span></h2>
+            </div>
+            <p id="edit-note">
+              Join for free. When a group fills, pre-orders open.
+            </p>
+          </div>
+          <div id="catalogue"></div>
+        </section>
+        <section class="process" id="how">
+          <div class="wrap process-layout">
+            <div>
+              <p class="eyebrow">From abroad to your door</p>
+              <h2>How it works<span>.</span></h2>
+              <button class="text-button" data-action="help">
+                Read the terms and FAQs <span data-icon="up-right"></span>
+              </button>
+            </div>
+            <ol>
+              <li>
+                <span>01</span>
+                <div>
+                  <h3>Bring us a find</h3>
+                  <p>
+                    Choose an approved brand and tell us what you want. We
+                    estimate the full cost in LKR, including customs and
+                    delivery.
+                  </p>
+                </div>
+              </li>
+              <li>
+                <span>02</span>
+                <div>
+                  <h3>Order together</h3>
+                  <p>
+                    Join a group for free. Once it unlocks, secure your spot
+                    with a 50% deposit before the batch closes.
+                  </p>
+                </div>
+              </li>
+              <li>
+                <span>03</span>
+                <div>
+                  <h3>Settle after customs</h3>
+                  <p>
+                    We buy on your behalf and consolidate shipments. Once
+                    customs clears your order, pay the final balance for local
+                    delivery.
+                  </p>
+                </div>
+              </li>
+            </ol>
+          </div>
+        </section>
+      </div>
+      <section id="page-view" class="wrap subpage" hidden></section>
+    </main>
+    <footer class="site-footer">
+      <div class="wrap footer-top">
+        <div>
+          <a class="wordmark" href="#home" aria-label="Ordely home"
+            >ordely<span>.</span></a
+          >
+          <p>Overseas fashion, ordered together in Sri Lanka.</p>
+        </div>
+        <nav aria-label="Footer navigation">
+          <a href="#orders">My orders</a
+          ><button data-action="help">Help &amp; terms</button
+          ><a href="#admin">Admin demo</a>
+        </nav>
+      </div>
+      <div class="wrap footer-bottom">
+        <span>© Ordely</span
+        ><span>Prototype · Simulated prices and payments</span>
+      </div>
+    </footer>
+    <dialog id="dialog" aria-labelledby="dialog-title"></dialog>
+    <div class="toast" id="toast" role="status" hidden></div>
+  </body>
+</html>
