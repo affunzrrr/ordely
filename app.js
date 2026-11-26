@@ -21,7 +21,12 @@ import {
   save,
   shortDate,
 } from "./data.js";
-import { adminDialog, adminView, manifest, submitAdmin } from "./admin.js";
+import {
+  adminDialog,
+  adminView,
+  manifest,
+  submitAdmin,
+} from "./admin.js?v=page-routes";
 import { identifyPage, legacyHref, siteRoot } from "./routes.mjs";
 import {
   accountView,
@@ -42,7 +47,7 @@ import {
   resetView,
   signupView,
   visibleItems,
-} from "./customer.js";
+} from "./customer.js?v=page-routes";
 import { button, heading, icon, iconButton, notice } from "./ui.js";
 
 let state = load();
